@@ -1,0 +1,204 @@
+---
+description: Guidelines for API integration and service layer architecture
+---
+
+# API Integration Guidelines
+
+## API Service Layer Architecture
+
+### Separation of Concerns
+- Create a dedicated API service file: `/src/lib/api-service.ts`
+- Keep API logic SEPARATE from React components
+- Components should never directly call `fetch()` - use service layer
+
+### Service Structure
+```typescript
+// /src/lib/api-service.ts
+
+const API_BASE_URL = 'https://image.model.tngtech.com';
+const API_ENDPOINT = '/api/v1/images/edits';
+
+interface TransformImageParams {
+  image: File;
+  prompt: string;
+  guidanceScale?: number;
+  seed?: number;
+  negativePrompt?: string;
+}
+
+export async function transformImage(params: TransformImageParams) {
+  // Implementation
+}
+```
+
+## TNG Image API Integration
+
+### Endpoint Details
+- **Base URL:** `https://image.model.tngtech.com`
+- **Endpoint:** `/api/v1/images/edits`
+- **Method:** POST
+- **Content-Type:** multipart/form-data
+
+### Authentication
+```typescript
+const token = process.env.NEXT_PUBLIC_TNG_API_TOKEN;
+
+const headers = {
+  'Authorization': `Bearer ${token}`,
+};
+```
+
+### Request Format (multipart/form-data)
+```typescript
+const formData = new FormData();
+formData.append('image', imageFile);
+formData.append('prompt', detailedPrompt);
+formData.append('guidance_scale', '8.0');
+// Optional: seed, negative_prompt, size, model
+```
+
+### Required Fields
+- `image` (File) - The image to transform
+- `prompt` (string) - Detailed transformation prompt
+
+### Optional Fields
+- `mask` (File) - Mask for selective editing (not needed for full transformations)
+- `seed` (number) - For reproducible results
+- `negative_prompt` (string) - What to avoid in generation
+- `guidance_scale` (number, default: 8.0) - Higher = closer to prompt (1-20 range)
+- `size` (string) - Format: 'widthxheight' (e.g., "512x512")
+- `model` (string, default: "diffusers/stable-diffusion-xl-1.0-inpainting-0.1")
+
+### Response Format
+OpenAI-compatible JSON response:
+```typescript
+interface ImageEditResponse {
+  data: Array<{
+    url: string;
+    revised_prompt?: string;
+  }>;
+  created: number;
+}
+```
+
+## Error Handling
+
+### Comprehensive Error Types
+```typescript
+class APIError extends Error {
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public userMessage?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+```
+
+### Error Scenarios to Handle
+1. **Network Failures**
+   - User message: "Unable to connect to image service. Please check your connection."
+   
+2. **API Errors (4xx, 5xx)**
+   - Parse error response
+   - Display helpful error message
+   - Provide retry option
+   
+3. **Timeout**
+   - Set reasonable timeout (60 seconds)
+   - User message: "Image transformation is taking longer than expected. Please try again."
+   
+4. **Invalid Response**
+   - Validate response structure
+   - Handle missing or malformed data
+
+### Error Handling Implementation
+```typescript
+export async function transformImage(params: TransformImageParams): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+  
+  try {
+    const formData = new FormData();
+    formData.append('image', params.image);
+    formData.append('prompt', params.prompt);
+    formData.append('guidance_scale', String(params.guidanceScale ?? 8.0));
+    
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TNG_API_TOKEN}`,
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new APIError(
+        `API request failed: ${response.status}`,
+        response.status,
+        'Unable to transform image. Please try again.'
+      );
+    }
+    
+    const data: ImageEditResponse = await response.json();
+    
+    if (!data.data?.[0]?.url) {
+      throw new APIError(
+        'Invalid API response',
+        undefined,
+        'Unexpected response from image service.'
+      );
+    }
+    
+    return data.data[0].url;
+    
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof APIError) {
+      throw error;
+    }
+    
+    if (error.name === 'AbortError') {
+      throw new APIError(
+        'Request timeout',
+        undefined,
+        'Image transformation is taking longer than expected. Please try again.'
+      );
+    }
+    
+    throw new APIError(
+      'Network error',
+      undefined,
+      'Unable to connect to image service. Please check your connection.'
+    );
+  }
+}
+```
+
+## Image Optimization
+
+### Before Sending to API
+- Resize/compress large images
+- Target max file size: 2MB
+- Maintain aspect ratio
+- Consider using Canvas API for client-side compression
+
+```typescript
+async function compressImage(file: File, maxSizeMB: number = 2): Promise<File> {
+  // Implementation for image compression
+}
+```
+
+## Testing the API
+
+### Development Workflow
+1. Use placeholder token initially
+2. When ready for testing, ask user for actual TNG API token
+3. Test with various image sizes and prompts
+4. Validate error handling scenarios

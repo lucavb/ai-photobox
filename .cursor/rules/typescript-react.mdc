@@ -1,0 +1,62 @@
+---
+globs: *.ts,*.tsx
+---
+
+# TypeScript and React Guidelines
+
+## TypeScript Standards
+
+### Type Safety
+- Enable strict mode in tsconfig.json
+- Define explicit types for ALL function parameters and return values
+- NO `any` types (use `unknown` if type is truly unknown)
+- Use TypeScript interfaces for all data structures
+- Create dedicated type definition files in `/src/types`
+
+## React 19 Best Practices
+
+### Component Structure
+- Use functional components with hooks
+- Prefer named exports for components
+- One component per file (except for small, closely related helper components)
+- Components should be pure and predictable
+
+### Hooks Usage
+```typescript
+// Modern React patterns
+import { useState, useEffect, useCallback, useMemo } from 'react';
+
+// Use useCallback for event handlers
+const handleCapture = useCallback((image: File) => {
+  // ...
+}, [dependencies]);
+
+// Use useMemo for expensive computations
+const processedData = useMemo(() => {
+  return expensiveComputation(data);
+}, [data]);
+```
+
+### Error Boundaries
+- Implement error boundaries for graceful error handling
+- Wrap critical sections with error boundaries
+
+### State Management
+- Use React hooks for local state
+- Keep state as close to where it's used as possible
+- Lift state only when necessary
+
+## Next.js 15 App Router
+
+### Server vs Client Components
+- Use Server Components by default
+- Add `'use client'` ONLY when needed:
+  - Using browser APIs (Camera API, File API)
+  - Using React hooks (useState, useEffect)
+  - Adding event listeners
+  - Using client-side only libraries
+
+### API Routes
+- Create API routes for server-side operations
+- Use route handlers for API endpoints
+- Handle errors properly with try-catch

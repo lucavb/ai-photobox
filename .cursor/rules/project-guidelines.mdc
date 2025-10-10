@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+
+# PhotoBox AI Project Guidelines
+
+## Project Overview
+This is a PhotoBox web application that allows users to capture photos from their device camera and transform them using AI-powered style transfers with preset suggestions and custom prompts.
+
+**Current Stage:** Initial local development prototype
+
+## Technical Stack
+- **Framework:** Next.js 15 with TypeScript
+- **UI Library:** shadcn/ui components only
+- **Styling:** Tailwind CSS (v4)
+- **Architecture:** App Router
+- **Icons:** lucide-react (preferred icon library)
+- **Key APIs:** Browser Camera API (navigator.mediaDevices.getUserMedia)
+
+## Core Architecture Principles
+
+### Technology Constraints
+- Use ONLY shadcn/ui and Tailwind CSS for UI components
+- NO additional dependencies without explicit user approval
+- NO Radix UI directly (only through shadcn/ui)
+- TypeScript with strict type safety throughout
+- Modern browser compatibility (Chrome, Safari, Firefox, Edge)
+
+### Code Quality Standards
+- Follow KISS, DRY, and SOLID principles
+- Prefer proven technologies over experimental ones
+- Explicit code over clever abstractions
+- Built-in solutions over adding dependencies
+- TypeScript interfaces for ALL data structures
+- Proper error boundaries
+- Inline comments ONLY for complex business logic
+
+### Component Structure
+- Component-based architecture with clean separation of concerns
+- Dedicated API service layer (separate from components)
+- Modern frontend patterns
+- Reusable, modular components
+
+## Environment Configuration
+- Use `.env.local` for local development (gitignored)
+- Use `.env.example` for documentation
+- API Token: `NEXT_PUBLIC_TNG_API_TOKEN`
+- Never commit actual tokens to repository
+
+## Working Style
+Keep working until you have fulfilled your task. After implementing each major component, review your solution and identify any issues or areas that need clarification before proceeding to the next step.

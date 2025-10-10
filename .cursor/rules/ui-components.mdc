@@ -1,0 +1,54 @@
+---
+description: UI/UX guidelines and component design patterns for PhotoBox
+---
+
+# UI/UX and Component Guidelines
+
+## Design Principles
+
+### Visual Design
+- **Style:** Modern, clean, minimal UI
+- **Color Scheme:** Neutral, professional colors with good contrast
+- **Responsiveness:** Mobile-first approach (mobile → tablet → desktop)
+- **Layout:** Spacious, uncluttered design with clear visual hierarchy
+
+### User Experience
+- Clear visual feedback for ALL actions
+- Loading, error, and success states for every operation
+- Graceful error handling with actionable messages
+- Smooth transitions and animations
+- Progressive disclosure (show relevant options at the right time)
+
+## shadcn/ui Components
+
+### Component Usage
+- Use ONLY shadcn/ui components for UI elements
+- Import components from `@/components/ui/`
+- Customize using Tailwind classes (no custom CSS unless necessary)
+- Follow shadcn/ui composition patterns
+
+## Camera Component Guidelines
+
+### Camera Access Flow
+1. Request camera permission
+2. Show live preview when granted
+3. Display clear error message if denied
+4. Offer file upload as fallback
+
+### Camera Best Practices
+- Use appropriate resolution constraints
+- Clean up media streams when done (stop tracks)
+- Handle both desktop and mobile cameras
+- Test on various devices
+
+### Layout
+- Display presets as a grid of buttons/cards
+- Provide custom text input field for advanced users
+- Clear visual indication of selected style
+- Mobile-responsive grid layout
+
+### Mobile Considerations
+- Large touch targets (min 44x44px)
+- Thumb-friendly button placement
+- Optimized camera UI for mobile
+- Landscape and portrait support
