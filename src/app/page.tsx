@@ -1,102 +1,207 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { Camera } from 'lucide-react';
+import { CameraCapture } from '@/components/CameraCapture';
+import { ImagePreview } from '@/components/ImagePreview';
+import { StyleSelection } from '@/components/StyleSelection';
+import { LoadingState } from '@/components/LoadingState';
+import { TransformationResult } from '@/components/TransformationResult';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AppStep, CapturedImage } from '@/types';
+import { transformImage, optimizeImage } from '@/services/image-api';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [currentStep, setCurrentStep] = useState<AppStep>('capture');
+  const [capturedImage, setCapturedImage] = useState<CapturedImage | null>(null);
+  const [transformedImageUrl, setTransformedImageUrl] = useState<string | null>(null);
+  const [selectedStyleName, setSelectedStyleName] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Handle image capture
+  const handleCapture = (image: CapturedImage) => {
+    setCapturedImage(image);
+    setCurrentStep('preview');
+    setError(null);
+  };
+
+  // Handle retake photo
+  const handleRetake = () => {
+    if (capturedImage?.url) {
+      URL.revokeObjectURL(capturedImage.url);
+    }
+    setCapturedImage(null);
+    setCurrentStep('capture');
+    setError(null);
+  };
+
+  // Handle continue to style selection
+  const handleContinueToStyle = () => {
+    setCurrentStep('style-selection');
+    setError(null);
+  };
+
+  // Handle style selection and trigger transformation
+  const handleStyleSelect = async (prompt: string, styleName: string) => {
+    console.log('=== Style Selection Started ===');
+    console.log('Style name:', styleName);
+    console.log('Prompt:', prompt);
+    console.log('Has captured image:', !!capturedImage);
+
+    if (!capturedImage) {
+      console.error('❌ No image captured!');
+      setError('No image captured. Please go back and capture a photo.');
+      return;
+    }
+
+    setSelectedStyleName(styleName);
+    setCurrentStep('processing');
+    setError(null);
+
+    try {
+      console.log('Starting image optimization...');
+      // Optimize image before sending
+      const optimizedImage = await optimizeImage(capturedImage.file);
+
+      console.log('Starting image transformation...');
+      // Transform image using API with Qwen model (no custom params needed)
+      const transformedUrl = await transformImage({
+        image: optimizedImage,
+        prompt: prompt,
+      });
+
+      console.log('✅ Transformation successful!');
+      setTransformedImageUrl(transformedUrl);
+      setCurrentStep('result');
+    } catch (error) {
+      console.error('❌ Transformation error in page component:', error);
+
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as { message: string }).message;
+        console.error('Error message:', errorMessage);
+        setError(errorMessage);
+      } else {
+        console.error('Unknown error format:', error);
+        setError('Failed to transform image. Please try again.');
+      }
+
+      setCurrentStep('style-selection');
+    }
+  };
+
+  // Handle start over
+  const handleStartOver = () => {
+    // Clean up object URLs
+    if (capturedImage?.url) {
+      URL.revokeObjectURL(capturedImage.url);
+    }
+    if (transformedImageUrl && transformedImageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(transformedImageUrl);
+    }
+
+    setCapturedImage(null);
+    setTransformedImageUrl(null);
+    setSelectedStyleName('');
+    setError(null);
+    setCurrentStep('capture');
+  };
+
+  // Handle errors
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
+
+  // Clear error
+  const clearError = () => {
+    setError(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+      {/* Header */}
+      <header className="w-full bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-center gap-3">
+            <Camera className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              PhotoBox AI
+            </h1>
+          </div>
+          <p className="text-center text-gray-600 dark:text-gray-400 mt-2">
+            Transform your photos with AI-powered style transfers
+          </p>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 max-w-2xl mx-auto">
+            <Alert variant="destructive">
+              <AlertDescription className="flex justify-between items-center">
+                <span>{error}</span>
+                <button
+                  onClick={clearError}
+                  className="ml-4 text-sm underline hover:no-underline"
+                >
+                  Dismiss
+                </button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Step: Camera Capture */}
+        {currentStep === 'capture' && (
+          <div className="space-y-6">
+            <div className="text-center max-w-2xl mx-auto mb-8">
+              <h2 className="text-2xl font-bold mb-3">Welcome to PhotoBox AI</h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Capture or upload a photo to get started. We&apos;ll help you transform it into amazing art!
+              </p>
+            </div>
+            <CameraCapture onCapture={handleCapture} onError={handleError} />
+          </div>
+        )}
+
+        {/* Step: Image Preview */}
+        {currentStep === 'preview' && capturedImage && (
+          <ImagePreview
+            imageUrl={capturedImage.url}
+            onRetake={handleRetake}
+            onContinue={handleContinueToStyle}
+          />
+        )}
+
+        {/* Step: Style Selection */}
+        {currentStep === 'style-selection' && capturedImage && (
+          <StyleSelection onStyleSelect={handleStyleSelect} disabled={false} />
+        )}
+
+        {/* Step: Processing */}
+        {currentStep === 'processing' && capturedImage && (
+          <LoadingState imageUrl={capturedImage.url} styleName={selectedStyleName} />
+        )}
+
+        {/* Step: Result */}
+        {currentStep === 'result' && capturedImage && transformedImageUrl && (
+          <TransformationResult
+            originalUrl={capturedImage.url}
+            transformedUrl={transformedImageUrl}
+            styleName={selectedStyleName}
+            onStartOver={handleStartOver}
+          />
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      {/* Footer */}
+      <footer className="w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            PhotoBox AI • Powered by TNG Image Model • {new Date().getFullYear()}
+          </p>
+        </div>
       </footer>
     </div>
   );

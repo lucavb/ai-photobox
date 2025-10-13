@@ -49,9 +49,9 @@ Build a modern PhotoBox web application that allows users to capture photos from
   - BBQ Party
   - Van Gogh Style
   - [Add 3-5 more creative and diverse style options]
-- **Important:** Each preset should map to a comprehensive, well-crafted prompt that follows image editing best practices
+- **Important:** Each preset should map to a clear, concise prompt for image editing
   - Display simple label to user (e.g., "BBQ Party")
-  - Send detailed, optimized prompt to API (e.g., "Transform this photo into a vibrant outdoor BBQ party scene with warm summer lighting, people socializing, grilled food on plates, and festive decorations, photorealistic style, high detail")
+  - Send clear editing instruction to API (e.g., "Add BBQ party elements and warm summer lighting to the background")
 - Custom free-text input field for advanced users who want to write their own detailed prompts
 - Clean, minimal layout using shadcn/ui components
 
@@ -63,7 +63,6 @@ Build a modern PhotoBox web application that allows users to capture photos from
   - Network failures: "Unable to connect to image service. Please check your connection."
   - API errors: Display helpful error message and option to retry
   - Timeout handling: Set reasonable timeout (60s) and inform user if exceeded
-- Consider using `guidance_scale` parameter (default 8.0) for consistent results
 
 ### 4. User Flow
 1. Landing → Clear instructions on how to use the app
@@ -104,11 +103,10 @@ Build a modern PhotoBox web application that allows users to capture photos from
 1. Set up Next.js project with TypeScript, shadcn/ui, and Tailwind CSS
 2. Create camera capture component
 3. Build style selection interface with preset-to-prompt mapping
-   - Create a mapping object/configuration for presets → detailed prompts
+   - Create a mapping object/configuration for presets → editing prompts
    - UI displays friendly preset names
-   - Backend receives optimized, detailed prompts
 4. Implement image preview and display components
-5. Create API service layer for TNG backend
+5. Create API service layer for TNG backend (OpenAI-compatible endpoint with Qwen model)
 6. Integrate components into cohesive flow
 7. Add error handling and loading states
 8. Ensure mobile responsiveness
@@ -118,27 +116,37 @@ Build a modern PhotoBox web application that allows users to capture photos from
 ## API Integration Details
 
 **Endpoint:**
-- Base URL: `https://image.model.tngtech.com`
+- Base URL: `https://image.model.tngtech.com/api/v1`
 - Full endpoint: `https://image.model.tngtech.com/api/v1/images/edits`
 - Method: POST
+- OpenAI-compatible API
+
+**Model:** `Qwen/Qwen-Image-Edit` - Specialized image editing model
 
 **Request Format:** `multipart/form-data`
 
-Required fields:
+**Required fields:**
 - `image` (binary file) - The image to edit
-- `prompt` (string) - Detailed, well-crafted transformation prompt
-  - For presets: Use comprehensive prompts (e.g., "Transform this photo into a vibrant outdoor BBQ party scene with warm summer lighting, people socializing, grilled food on plates, and festive decorations, photorealistic style, high detail")
-  - For custom input: Use user's free-text prompt as-is
+- `prompt` (string) - Clear editing instruction (e.g., "Add BBQ party elements to the background")
+- `model` (string) - Must be "Qwen/Qwen-Image-Edit"
+- `response_format` (string) - Use "b64_json" to receive base64-encoded image
 
-Optional fields:
-- `mask` (binary, optional) - Mask defining where to edit (not needed for full image transformation)
-- `seed` (integer, optional) - For reproducible results
-- `negative_prompt` (string, optional) - What to avoid in the generation
-- `guidance_scale` (number, default: 8.0) - Higher values = closer to prompt (range typically 1-20)
-- `size` (string, optional) - Format: 'widthxheight' (e.g., "512x512")
-- `model` (string, default: "diffusers/stable-diffusion-xl-1.0-inpainting-0.1")
+**Response Format:** OpenAI-compatible JSON response with base64-encoded image data
 
-**Response Format:** OpenAI-compatible JSON response containing the edited image data
+**Example (Python):**
+```python
+import openai
+
+openai.base_url = "https://image.model.tngtech.com/api/v1/"
+openai.api_key = os.environ['TOKEN']
+
+response = openai.images.edit(
+    prompt="Add a moustache to the face",
+    model="Qwen/Qwen-Image-Edit",
+    image=open("photo.jpg", "rb"),
+    response_format="b64_json"
+)
+```
 
 **Authentication:** Bearer token in request headers
 - Header format: `Authorization: Bearer <tng_token>`
