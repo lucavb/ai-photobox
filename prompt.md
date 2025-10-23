@@ -22,9 +22,9 @@ Build a modern PhotoBox web application that allows users to capture photos from
 
 ## Technical Stack
 
-- Next.js (latest) with TypeScript
+- Next.js 16 with TypeScript
 - shadcn/ui components
-- Tailwind CSS
+- Tailwind CSS v4
 - App Router architecture
 - Browser Camera API
 
@@ -100,16 +100,72 @@ Build a modern PhotoBox web application that allows users to capture photos from
 
 ## Implementation Approach
 
-1. Set up Next.js project with TypeScript, shadcn/ui, and Tailwind CSS
-2. Create camera capture component
-3. Build style selection interface with preset-to-prompt mapping
-   - Create a mapping object/configuration for presets → editing prompts
-   - UI displays friendly preset names
-4. Implement image preview and display components
-5. Create API service layer for TNG backend (OpenAI-compatible endpoint with Qwen model)
-6. Integrate components into cohesive flow
-7. Add error handling and loading states
-8. Ensure mobile responsiveness
+### 1. Project Scaffolding
+Use Next.js CLI to create the base project:
+
+**⚠️ IMPORTANT: Use CLI flags to avoid interactive prompts**
+```bash
+npx create-next-app@latest [project-name] --typescript --tailwind --app --eslint --src-dir --import-alias "@/*" --use-npm --webpack --yes
+```
+
+**CLI Flags Explained:**
+- `--typescript` - Initialize as TypeScript project
+- `--tailwind` - Initialize with Tailwind CSS
+- `--app` - Use App Router (not Pages Router)
+- `--eslint` - Initialize with ESLint
+- `--src-dir` - Create `src/` directory
+- `--import-alias "@/*"` - Set import alias
+- `--use-npm` - Use npm (not pnpm/yarn/bun)
+- `--webpack` - Use Webpack bundler (not Turbopack)
+- `--yes` - Skip remaining interactive prompts with defaults
+
+**Note:** Next.js 16+ will ask about React Compiler and Turbopack. The `--yes --webpack` flags handle these automatically.
+
+### 2. Install Dependencies
+```bash
+npm install lucide-react class-variance-authority clsx tailwind-merge
+npm install -D tailwindcss-animate autoprefixer
+```
+
+### 3. Setup shadcn/ui
+Initialize shadcn/ui configuration:
+
+**⚠️ IMPORTANT: Use --defaults flag to avoid interactive prompts**
+```bash
+npx shadcn@latest init --defaults
+```
+
+Then install required components:
+```bash
+npx shadcn@latest add button card input alert --yes
+```
+
+**Note:** The `--defaults` flag uses default configuration (Neutral color, CSS variables, etc.). The `--yes` flag on add commands skips confirmation prompts.
+
+### 4. Implementation Steps
+1. Create type definitions in `src/types/index.ts`
+2. Create API service layer for Qwen model in `src/services/image-api.ts`
+3. Create style presets configuration in `src/config/styles.ts`
+4. Build UI components:
+   - CameraCapture component with live preview
+   - ImagePreview component
+   - StyleSelection component with preset-to-prompt mapping
+   - LoadingState component with animations
+   - TransformationResult component
+5. Implement main page with complete user flow in `src/app/page.tsx`
+6. Add comprehensive error handling and loading states
+7. Ensure mobile responsiveness and test on various devices
+8. Create environment configuration files (.env.example, .env.local)
+9. **Verify build:** Run `npm run build` to catch any TypeScript errors or configuration issues before considering the project complete
+
+### 5. Important Technical Notes
+- **Tailwind CSS v4:** Next.js 16 ships with Tailwind v4, which uses `@tailwindcss/postcss` plugin
+  - The `postcss.config.mjs` will have `@tailwindcss/postcss` only (no separate autoprefixer needed)
+  - This is the correct configuration - don't modify it
+- Use SVG for favicon (`src/app/icon.svg`) instead of ICO format
+- Next.js 16 uses React 19 - fully compatible with shadcn/ui
+- `.env.local` is gitignored and may not be writable by automation - this is expected behavior
+- **Camera Stream Timing:** Be mindful of React's render cycle when attaching media streams to video elements, especially if the video element is conditionally rendered. Consider using React lifecycle methods to ensure refs are available before accessing them.
 
 ---
 
@@ -150,8 +206,10 @@ response = openai.images.edit(
 
 **Authentication:** Bearer token in request headers
 - Header format: `Authorization: Bearer <tng_token>`
-- Token should be stored in environment variables (`.env.local`)
+- Token must be stored in environment variables (`.env.local`)
 - Use placeholder token initially: `NEXT_PUBLIC_TNG_API_TOKEN=your_token_here`
+- Create `.env.example` with placeholder for documentation
+- Add `.env.local` to `.gitignore` (should be done automatically by create-next-app)
 - **Important:** Once the application is ready for testing, ask the user to provide the actual TNG API token to replace the placeholder
 
 ---
@@ -164,7 +222,31 @@ response = openai.images.edit(
 4. Environment configuration files:
    - `.env.example` with `NEXT_PUBLIC_TNG_API_TOKEN=your_token_here`
    - `.env.local` with the same placeholder (gitignored)
-   - Instructions in README on how to add the actual token
+5. **Single documentation file:**
+   - `README.md` ONLY - Comprehensive documentation including:
+     - Project overview and features
+     - Quick start / setup instructions
+     - Usage guide
+     - API integration details
+     - Troubleshooting section
+   - **DO NOT create:** SETUP.md, IMPLEMENTATION_NOTES.md, PROJECT_SUMMARY.md, or any other documentation files
+6. Proper PostCSS configuration:
+   - `postcss.config.mjs` with appropriate plugins (Tailwind v4 uses `@tailwindcss/postcss` only)
+7. Icon/favicon:
+   - `src/app/icon.svg` for the application favicon
+
+## Common Pitfalls to Avoid
+
+1. **DO use CLI flags** - Always use `--yes --webpack` and other flags to avoid interactive prompts in create-next-app
+2. **DO use --defaults** - Use `npx shadcn@latest init --defaults` to skip shadcn interactive setup
+3. **DO use SVG for favicon** - `src/app/icon.svg` not ICO format (Next.js metadata format)
+4. **DO use create-next-app** - For scaffolding to ensure proper Next.js setup
+5. **DO clean up camera streams** - Call `stream.getTracks().forEach(track => track.stop())` when unmounting
+6. **DO compress images** - Before sending to API (max 2MB recommended)
+7. **DO handle base64 response** - Qwen model returns `b64_json` format, not URL
+8. **DO set proper timeout** - 60 seconds for API requests (transformations take 10-30 seconds)
+9. **DO NOT try to write .env.local via automation** - It's gitignored and may be blocked; create .env.example instead
+10. **DO handle React refs carefully** - When working with refs to DOM elements that are conditionally rendered, ensure the element exists before trying to access or modify it. React lifecycle methods can help synchronize state changes with DOM availability.
 
 ---
 
